@@ -1,6 +1,5 @@
-#include <stdlib.h>
-#include <assert.h>
-#include "atom.h"
+#ifndef ATOM_C_INCLUDE
+#define ATOM_C_INCLUDE
 
 #define MAX_NUM_ATOMS 4096
 #define ATOM_DATA_SIZE 65536
@@ -25,17 +24,17 @@ struct atom atoms[MAX_NUM_ATOMS];
 char immutable_memory[ATOM_DATA_SIZE];
 
 /* Created by Dan J. Bernstein */
-unsigned djb2(const char *str, unsigned len)
+static unsigned djb2(const char *str, unsigned len)
 {
 unsigned long h = 5381;
 int c;
 
 if(!len) //zero-terminated str
     while(c = *str++)
-        h = ((h << 5) + h) + c;
+        h = ((h << 5) + h) + CHAR_TOLOWER(c);
 else //fixed length
-    for(int i = 0; i < len; i++)
-        h = ((h << 5) + h) + str[i];
+    for(int i = 0, c = str[i]; i < len; i++)
+        h = ((h << 5) + h) + CHAR_TOLOWER(str[i]);
 return h;
 }
 
@@ -72,7 +71,8 @@ return ptr;
 ** @param
 ** @param
 */
-struct atom *atom_addcpy(struct atomtable *at, const char *str, unsigned len)
+struct atom *atom_addcpy(struct atomtable *at,
+  const char *str, unsigned len)
 {
 struct atom *atom, *patom;
 long index;
@@ -82,7 +82,7 @@ long index;
     atom->str = malloc(len); //create space for the atom data
     assert(atom->str);
     memcpy((void*)atom->str, str, len);
-    atom->hash = dbj2(str, len);
+    atom->hash = djb2(str, len);
     index = atom->hash % at->size;
     atom->len = len;
     atom->next = 0;
@@ -99,7 +99,8 @@ long index;
 ** @desc Add an string to the atom table
 ** This function is currently a bottleneck because of malloc
 */
-struct atom *atom_add(struct atomtable *at, const char *str, unsigned len)
+struct atom *_atom_add(struct atomtable *at,
+   const char *str, unsigned len, const char *_file, unsigned _line)
 {
 struct atom *atom, *patom;
 long index = 0;
@@ -120,26 +121,44 @@ long index = 0;
     return atom;
 }
 
-char *atom_get(struct atom *atom, unsigned *plen)
+/**
+**
+*/
+unsigned _atom_get(struct atom *atom, void *ptr,
+  unsigned *plen, const char *_file, unsigned _line)
 {
-    assert(atom);
-    if(plen) *plen = atom->len;
-    return atom->str;
+    assert(atom && ptr && plen);
+    if(*plen > 0){
+        if(atom->len > *plen){
+            memcpy((char*)ptr, atom->str, *plen);
+            return 0;
+        }
+        else{
+            memcpy((char*)ptr, atom->str, atom->len);	
+            *plen = atom->len;
+            return 1;
+        }
+    }
+    *((const char**)ptr) = atom->str;
+    *plen = atom->len;
+    return 1;
 }
 
 /**
 ** @desc
 */
-struct atom *atom_find(struct atomtable *at, const char *str, unsigned len)
+struct atom *_atom_find(struct atomtable *at,
+  const char *str, unsigned len, const char *_file, unsigned _line)
 {
 struct atom *atom;
-int hash;
+unsigned int hash;
 
     len = len ? len : strlen(str);
-    hash = dbj2(str, len);
+    hash = djb2(str, len);
     for(atom = at->table[hash%at->size]; atom; atom = atom->next)
     {
         if((atom->len == len) && (atom->hash == hash)) break;
     }
     return atom;
 }
+#endif
