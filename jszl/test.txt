@@ -1,0 +1,30 @@
+jszl.c
+h:\dev\code\jszl\jszlapi.c(75): warning C4029: declared formal parameter list different from definition
+h:\dev\code\jszl\jszlapi.c(275): warning C4090: '=': different 'const' qualifiers
+test.c
+Microsoft (R) Incremental Linker Version 14.16.27032.1
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+/out:test\test.exe 
+/MACHINE:x86 
+jszl.obj 
+test\test.obj 
+-------------------------------------
+{
+    "$schema" : "http://json-schema.org/draft-06/schema#",
+    "$id" : "2",
+    
+    "type": "object",
+    "properties":{
+        "title"     :{"type": "string",
+	              "enum": ["Mr", "Ms", "Mrs"]
+                     },
+        "first_name":{"type": "string"}, 
+	"last_name" :{"t
+Parse Success!
+UC ♔♠
+4
+4
+0x0
+
+{"Name":"Kendrick","Mood":"☹"}

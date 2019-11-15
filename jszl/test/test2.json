@@ -1,0 +1,35 @@
+{
+  "$id" : "https://example.com/person.schema.json",
+  "$schema" : "http://json-schema.org/draft-07/schema#",
+  "title" : "Person",
+  "type" : "array",
+  "properties": {
+    "firstName": {
+      "type" : "string",
+      "description" : "The person's\u0020first n\u0061me."
+    },
+    "lastName": {
+      "type": "str\u0069ng",
+      "description": "The person's last name."
+    },
+    "age": {
+      "description": "Age \u0069n years wh\u0069ch must be equal to or greater than zero.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "aliases": {
+      "description": "A list of al\u0069as names.",
+      "type": "array",
+      "items": {
+        "type": "str\u0069ng"
+      },
+      "minItems": 0,
+      "maxItems": 5,
+      "uniqueItems": true
+    },
+    "required": ["f\u0069rstName", "lastName","age"],
+    "maxProperties": 256,
+    "minProperties": 0,
+    "fakeArray": []
+  }
+}

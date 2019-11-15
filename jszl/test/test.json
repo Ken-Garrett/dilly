@@ -1,0 +1,23 @@
+[
+  [],
+  true,
+  false,
+  "String",
+  [123.2  ,"String2", -300, true],
+  {
+    "IPV4": "192.168.1.003:443",
+    "Age" : 9,
+    "Object1" : { "Value1" : 12, "Value2" : 2, "Value3": true },
+    "Dead" : true,
+    "UUID" : "{4963eb9C-030d-4ead-b24b-9108e943781d}",
+    "Object2" : {"UUID": "{4963eb9C-030d-4ead-b24b-9108e943781d}"},
+    "Random" : {"Value1" : 12, "Value2": 11},
+    "IPV6" : "2a0d:2144::"
+  },
+  12,
+  {
+     "Bool": true,
+     "IPV6": "fe80::f816:3eff:fe5f:0419",
+     "Number" : 0x81
+  }
+]

@@ -1,0 +1,22 @@
+{
+	"Name":"Kendrick",
+	"Mood":"☹",
+
+	"Object1": {
+            "Name": "Garrett",
+            "Object2": {}	    
+	},
+
+    "Array": [],
+
+    "Person": {
+        "name": "Ken Garrett",
+        "age":  31,
+	"height": "5'11",
+        "birthday": {
+	    "month":     5,
+            "day"  :    12,
+            "year" :  1988
+	}
+    }
+}
