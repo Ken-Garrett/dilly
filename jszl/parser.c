@@ -1,14 +1,7 @@
 
-#define ROOT_NS (ctx->RootNS)
-#define CURRENT_NS (ctx->CurrentNS)
-#define PREVIOUS_VALUE (parser->prevnode)
-#define CURRENT_KEY (parser->curkey)
-#define STACK_INDEX (parser->stack_idx)
 #define LINE_OFFSET
 #define NAMESPACE_STACK (parser->ns_stack)
-#define ATOM_TABLE (ctx->atom_table)
 #define ERRORLOG_PROC (parser->log_error)
-#define MEMALLOC_PROC (parser->alloc)
 
 #define ERRORMSG_INVALID_PRIMITIVE "Invalid primitive value" 
 
@@ -25,30 +18,33 @@ enum {
 };
 
 
+void * allocmem(int size)
+{
+    return 0;
+}
 
+void deallocmem(void *mem)
+{}
 
-static inline struct jszlnode * new_value(
-  struct jszlnode *node_pool
- ,int pool_idx
-// ,struct jszlnode *current_namespace
- ,short valtype
- ,long data
- ,unsigned len
-){
-struct jszlnode * pnode;
-    pnode = &node_pool[pool_idx];
+//typedef unsigned int dword;
+static inline void *
+new_node(long value, long atom, short type, short count)
+{
+    struct jszlnode * pnode;
+    pnode = malloc(sizeof(struct jszlnode));
+    if(!pnode) return 0;
+
+    pnode->value  = value;
+    pnode->name   = (void*)atom;
+    pnode->type   = type;
+    pnode->count  = count;
+    pnode->next   = 0;
     return pnode;
 }
 
-
-/*
-** Macro to create a new node and log an error on failure
-*/
-#define NEW_VALUE(VALTYPE, DATA, LEN)\
-do{\
-PREVIOUS_VALUE = new_value(parser, ctx, current_namespace, VALTYPE, (long)DATA, LEN);\
-if(!PREVIOUS_VALUE) { LOG_ERROR(JSZLE_NO_MEMORY, 0); }\
-}while(0)
+static inline void
+delete_node(void *node)
+{}
 
 
 /*
@@ -68,9 +64,10 @@ if(!PREVIOUS_VALUE) { LOG_ERROR(JSZLE_NO_MEMORY, 0); }\
 //goes to cleanup after 1 error
 #define LOG_ERROR(e, msg)\
 do{\
-if(ERRORLOG_PROC && !ERRORLOG_PROC(e, msg, LINE, 0)) { goto ERROR_CLEANUP; }\
+if(ERRORLOG_PROC && !ERRORLOG_PROC(e, msg, parser->line, 0)) { goto ERROR_CLEANUP; }\
 goto ERROR_CLEANUP;\
 }while(0);
+
 
 static long key_exists(struct jszlnode *value, struct atom *key)
 {
@@ -118,74 +115,6 @@ struct value_data {
     unsigned long hash;
 };
 
-int string_handler(struct jszlparser *parser, unsigned *hash)
-{
-int len;
-struct jszlnode *pnode;
-
-struct jszlnode *current_namespace;
-
-    len = is_valid_string(parser->loc+1, global_seed, hash);
-    if(!len) return 0;
-    if(!pnode) //error: no value 
-
-    current_namespace = parser->current_namespace;
-
-    if(!current_namespace);
-    else if(!current_namespace->child){
-        current_namespace->child = pnode;
-        current_namespace->count++;
-    }
-    else{
-        PREVIOUS_VALUE->next = pnode;
-        parser->current_namespace->count++;
-    }
-
-    return len+1;
-}
-
-
-    parser->loc++;
-    len = is_valid_key(parser->loc, global_seed, &hash);
-    if(parser->loc[len] != '"'){
-        LOG_ERROR(JSON_ERROR_SYNTAX, 0);
-    }
-    atom = &ctx->atom_pool[parser->atom_pool_idx++];
-    CURRENT_KEY = atom_add(l_atomTable, ATOM_TABLE_SIZE, atom, hash, len, parser->loc, 0);
-    if(key_exists(current_namespace, CURRENT_KEY)){
-        LOG_ERROR(JSZLE_DUP_KEY, 0); 
-    }
-
-
-
-int key_handler(struct jszlparser *parser, unsigned *hash,
-    struct atom * atom_pool, int pool_idx, struct atom **atom)
-{
-int len;
-
-    len = is_valid_key(parser->loc+1, global_seed, hash);
-    if(parser->loc[len] != '"') return 0;
-
-    *atom = &atom_pool[pool_idx];
-    parser->curkey = atom_add(g_atomTable, ATOM_TABLE_SIZE, atom, hash, len, loc);
-    if(key_exists(parser->current_namespace, parser->current_key)){
-        return JSZLE_DUP_KEY; 
-    }
-    return len+1;
-}
-
-struct jszlnode * new_node(struct jszlparser *parser)
-{
-    struct jszlnode *pnode;
-
-    if(parser->pool_idx == parser->node_pool_size){
-        return 0;
-    }
-    pnode = &parser->node_pool[parser->pool_idx++];
-    return pnode;
-}
-
-struct jszlnode * new_atom()
 
 typedef int (*jszl_string_handler)(struct jszlparser *);
 typedef int (*jszl_key_handler)(struct jszlparser *);
@@ -197,89 +126,77 @@ typedef int (*jszl_key_handler)(struct jszlparser *);
 static enum jszltype validate_value(
     struct jszlparser *parser
    ,jszl_string_handler string_handler
-   ,struct value_data *vd
 ){
 struct jszlnode *pnode;
-unsigned length;
-unsigned type;
-
-    // create new value
-    pnode = new_node(parser);
-    if(!pnode){
-        //log error: cannot create node
-        return 0;
-    }
+unsigned length = 0;
+unsigned type = 0;
+long value = 0;
+int n;
+int numType;
+int isNegative;
 
     switch(*parser->loc){
     case '"':
         length = string_handler(parser);
         if(!length) return 0; // log error: invalid string
-        pnode->type   = TYPE_STRING;
-        pnode->value  = parser->loc+1;
-        pnode->length = len;
+        type   = TYPE_STRING;
+        value  = (long)parser->loc+1;
         break;
 
     case '[':
-        pnode->type  = TYPE_ARRAY;
-        pnode->child = 0;
-        pnode->count = 0;
+        type  = TYPE_ARRAY;
         break;
 
     case '{':
-        pnode->type  = TYPE_OBJECT;
-        pnode->child = 0;
-        pnode->count = 0;
+        type  = TYPE_OBJECT;
         break;
 
     case 'f':
-        if(memcmp(parser->loc, "false", 5)){
+        if(memcmp(parser->loc+1, "false", 5)){
             break;
         }
-	pnode->type   = TYPE_BOOLEAN;
-        pnode->value  = 0;
-        pnode->length = 5;
+	type   = TYPE_BOOLEAN;
+        length = 5;
         break;
 
     case 't':
-        if(memcmp(parser->loc, "true", 4)){
+        if(memcmp(parser->loc+1, "true", 4)){
             break;
         }
-        pnode->type   = TYPE_BOOLEAN;
-        pnode->value  = 1;
-        pnode->length = 4;
+        type   = TYPE_BOOLEAN;
+        value  = 1;
+        length = 4;
 	break;
 
     case 'n':
-	if(memcmp(parser->loc, "null", 4)){
+	if(memcmp(parser->loc+1, "null", 4)){
             break;
         }
-        pnode->type   = TYPE_NULL;
-        pnode->value  = 0;
-        pnode->length = 4;
+        type   = TYPE_NULL;
+        length = 4;
 	break;
 
     default:
-        if(IS_DEC_DIGIT(n) || n == '-'){
-            vd->length = is_valid_number(parser->loc, &vd->numType, &vd->isNegative);
-	    if(!vd->length){ 
+        if(IS_DEC_DIGIT(*parser->loc) || *parser->loc == '-'){
+            length = is_valid_number(parser->loc+1, &numType, &isNegative);
+	    if(length){
+	        if(numType == _NumberTypeHex){
+                    value = hextoint(parser->loc+2, length-2);
+                }
+		else if(numType == _NumberTypeDecimal){
+                    value = atouint(parser->loc, length);
+                }
+                value = n;
+                type = TYPE_NUMBER;
                 break;
             }
-	    else if(vd->numType == _NumberTypeHex){
-                n = hextoint(parser->loc+2, vd->length-2);
-            }
-	    else if(vd->numType == _NumberTypeDecimal){
-                n = atouint(parser->loc, len);
-            }
-            return TYPE_NUMBER;
         }
 
 	// log error: invalid value
-	// delete node
 	return 0;
     }
 
-    pnode->name = parser->curkey;
-    pnode->next = 0;
+    pnode = new_node(value, (long)parser->curkey, type, length);
     parser->prevnode = pnode;
     return pnode->type;
 }
@@ -324,17 +241,17 @@ int n;
     }
     else{
         parser->loc = str;
-        LINE = 1;
+        parser->line = 1;
     }
 
-    parser->loc += skip_ws(parser->loc, &LINE);
+    parser->loc += skip_ws(parser->loc, &parser->line);
     if(*parser->loc == '['){
-        parser->current_namespace = new_value(parser, TYPE_ARRAY);
+        parser->current_namespace = new_node(0, 0, TYPE_ARRAY, 0);
         if(!parser->current_namespace) { LOG_ERROR(JSZLE_NO_MEMORY, 0); }
         parser->ns_stack[parser->stack_idx].namespace = parser->current_namespace;
     }
     else if(*parser->loc == '{'){
-        parser->current_namespace = new_value(parser, TYPE_OBJECT);
+        parser->current_namespace = new_node(0, 0, TYPE_OBJECT, 0);
         if(!parser->current_namespace) { LOG_ERROR(JSZLE_NO_MEMORY, 0); }
         parser->ns_stack[parser->stack_idx].namespace = parser->current_namespace;
     }
@@ -380,10 +297,10 @@ int n;
         default:
             goto ARRAY_PHASE_COMMA;
     }
-    parser->current_key = 0;
-    parser->current_namespace = parser->prevnode;
+    parser->curkey = 0;
+    parser->current_namespace = parser->prevnode; //namespace node is stored here
     if(++parser->stack_idx == MAX_NS_LEVEL){
-        return 0; 
+        return 0; //exit, out of namespace memory 
     }
     parser->ns_stack[parser->stack_idx].namespace = parser->current_namespace;
     parser->loc++;
@@ -458,7 +375,7 @@ int n;
         default:
             goto OBJECT_PHASE_COMMA;
     }
-    parser->current_key = 0;
+    parser->curkey = 0;
     parser->current_namespace = parser->prevnode;
     if(++parser->stack_idx == MAX_NS_LEVEL){
         return 0; 
@@ -467,7 +384,7 @@ int n;
     parser->loc++;
     goto ENTER_NAMESPACE;
 
-    CURRENT_KEY = 0;
+    parser->curkey = 0;
     type = 0;
 
   OBJECT_PHASE_COMMA:

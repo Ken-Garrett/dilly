@@ -96,6 +96,28 @@ struct atom {
   unsigned length;
 };
 
+
+
+/* Global Atom Table
+**
+*/
+struct {
+  struct atom * table[ATOM_TABLE_SIZE];
+
+#if defined(_WIN32) || defined(_WIN64)
+  CRITICAL_SECTION syncobj; 
+ 
+#elif defined(_KERNEL_MODE)
+  
+#elif defined(__linux__) || defined(__GNUC__)
+  pthread_mutex_t syncobj;
+
+#endif
+
+} global_atom_table;
+
+struct atom * g_atomTable[ATOM_TABLE_SIZE];
+
 /*
 ** TYPE DECLARATIONS
 */
@@ -164,7 +186,7 @@ struct jszlparser {
   const char *loc; //current location
   struct atom *curkey;
   struct jszlnode * prevnode;
-  char Phase;
+  char phase;
 
   unsigned int value_pool_idx;
   unsigned int atom_pool_idx;

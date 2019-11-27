@@ -316,6 +316,17 @@ struct jszlvtable{
   void * (*memalloc)(void *ctx, unsigned long size, int doalloc);
   void (*errorlog)(void *ctx, jszle err, const char *msg);
 };
+
+#if defined(_WIN32) || defined(_WIN64)
+  #define JSZLEXPORT __declspec(dllexport)
+
+#elif defined(__linux__) || defined(__GNUC__)
+  #define JSZLEXPORT __attribute__((visibility("default")))
+
+#else
+  #define JSZLEXPORT
+
+#endif
   
 
 /*
@@ -352,26 +363,26 @@ jszle __jszlSetOpt(DECLPARAMS
 */
 #define jszlSetEncode(Handle, Encode)\
 __jszlSetEncode(DEBUG_PARAMS(), Handle, Encode)
-jszle __jszlSetEncode(DECLPARAMS
+JSZLEXPORT jszle __jszlSetEncode(DECLPARAMS
                      ,jszlHandle hdl
                      ,enum jszlencode enc);
 
 
 #define jszlThreadInit()\
 __jszlThreadInit(DEBUG_PARAMS())
-jszlHandle __jszlThreadInit(DECLPARAMS);
+JSZLEXPORT jszlHandle __jszlThreadInit(DECLPARAMS);
 
 
 #define jszlParseLocalFile(Handle, File)\
 __jszlParseLocalFile(DEBUG_PARAMS(), Handle, File)
-jszle __jszlParseLocalFile(DECLPARAMS
+JSZLEXPORT jszle __jszlParseLocalFile(DECLPARAMS
                           ,jszlHandle handle
                           ,const char *file);
 
 
 #define jszlIterate(Handle, Callback, Passback, Path)\
 __jszlIterate(DEBUG_PARAMS(), Handle, Callback, Passback, Path)
-jszle __jszlIterate(DECLPARAMS
+JSZLEXPORT jszle __jszlIterate(DECLPARAMS
                    ,jszlHandle handle
                    ,int (*callback)(void *, int)
                    ,void *passback
@@ -403,7 +414,7 @@ int __json_read(DECLPARAMS
 //#define jszl_setscope(handle, pathstr, stropt)
 #define jszlSetScope(Handle, Path)\
 __jszlSetScope(DEBUG_PARAMS(), Handle, Path)
-jszle __jszlSetScope(DECLPARAMS
+JSZLEXPORT jszle __jszlSetScope(DECLPARAMS
                     ,jszlHandle handle
                     ,const char *pathstr);
 

@@ -167,6 +167,54 @@ jszle __jszlParseString(DECLPARAMS
     return JSZLE_NONE;
 }
 
+
+int string_handler(struct jszlparser *parser)
+{
+int len;
+struct jszlnode *pnode;
+int hash;
+
+struct jszlnode *current_namespace;
+
+    len = is_valid_string(parser->loc+1, global_seed, &hash);
+    if(!len) return 0;
+    if(!pnode) //error: no value 
+
+    current_namespace = parser->current_namespace;
+
+    if(!current_namespace);
+    else if(!current_namespace->child){
+        current_namespace->child = pnode;
+        current_namespace->count++;
+    }
+    else{
+        parser->prevnode->next = pnode;
+        parser->current_namespace->count++;
+    }
+
+    return len+1;
+}
+
+
+int key_handler(struct jszlparser *parser)
+{
+int len;
+unsigned hash;
+struct atom *atom;
+
+    len = is_valid_key(parser->loc+1, global_seed, &hash);
+    if(parser->loc[len] != '"') return 0;
+
+    atom = &parser->atom_pool[parser->atom_pool_idx++];
+    parser->curkey =
+        atom_add(g_atomTable, ATOM_TABLE_SIZE, atom, hash, len, parser->loc);
+    if(key_exists(parser->current_namespace, parser->curkey)){
+        return JSZLE_DUP_KEY; 
+    }
+    return len+1;
+}
+
+
 jszle __jszlParseLocalFile(DECLPARAMS
                           ,jszlHandle handle
                           ,const char *path)
@@ -176,7 +224,7 @@ struct jszlfile fs = {0};
 const char *json;
 
 struct jszlcontext *ctx;
-struct jszlparserstate state = {0};
+struct jszlparser parser = {0};
 unsigned rslt;
 
     ctx = get_context(handle);
@@ -191,7 +239,7 @@ unsigned rslt;
     printf("%.*s\n", 300, json);
 
     //invoke the parsing engine on the mapped pointer
-    rslt = json_parser_engine(&state, ctx, json);
+    rslt = json_parser_engine(&parser, ctx, json, key_handler, string_handler);
     if(rslt != JSZLE_NONE){
         printf("Error(%u): Failed to parse JSON file\n", rslt); 
         return 0;
@@ -220,7 +268,7 @@ jszle __jszl_load(DECLPARAMS
 struct jszlfile file;
 jszle err;
 struct jszlcontext *pctx;
-struct jszlparserstate state;
+struct jszlparser parser;
 
     pctx = get_context(handle);
     pctx->error_file = __file__;
@@ -228,21 +276,19 @@ struct jszlparserstate state;
 
     // open the file and load it into memory
     openFile(&file, filename, 0);
-    err = json_parser_engine(&state, pctx, filename);
+    err = json_parser_engine(&parser, pctx, filename, key_handler, string_handler);
 
     return JSZLE_NONE;
 }
 
-//jszl_set_vtable(0, 0, 0, 0, 0, 0, 0, 0);
-
 
 jszle __json_read(DECLPARAMS
- ,struct jszlparserstate *pstate
+ ,struct jszlparser *pstate
  ,struct jszlcontext *handle 
  ,const char *str
 ){
 int rslt;
-    rslt = json_parser_engine(pstate, handle, str);
+    rslt = json_parser_engine(pstate, handle, str, key_handler, string_handler);
     if(rslt != JSZLE_NONE) return rslt;
     return JSZLE_NONE;
 }
